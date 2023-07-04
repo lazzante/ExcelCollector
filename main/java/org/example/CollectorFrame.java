@@ -1,13 +1,8 @@
 package org.example;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFCell;
-import org.apache.poi.xssf.usermodel.XSSFCellStyle;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.commons.codec.binary.StringUtils;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.*;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -30,14 +25,12 @@ public class CollectorFrame extends JFrame {
     String path;
 
 
-
-    CollectorFrame(){
-
+    CollectorFrame() {
 
 
         JFrame jFrame = new JFrame("Excel Collector");
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        jFrame.setSize(300,100);
+        jFrame.setSize(300, 100);
         JPanel jPanel = new JPanel();
 
         button = new JButton("Start Collector");
@@ -49,22 +42,25 @@ public class CollectorFrame extends JFrame {
                 File[] files = filepath.listFiles();
                 int kacDosyaOkudum = 0;
 
-
                 try {
                     BufferedWriter writer = new BufferedWriter(new FileWriter("CollectorsOutput.csv"));
-                    String firstLine = "CONTACT ANGLE"+"\n"+"LOG BOOK";
+                    String firstLine = "CONTACT ANGLE" + "\n" + "LOG BOOK";
                     String secondLine = "ANALYSIS / PROCESS";
                     String thirdLine = "EQUIPMENT NAME,DIVISION,DATE,TIME,OPERATION,USER,PURPOSE OF OPERATION,PROJECT CODE,USAGE DURATION,USAGE MODE,INSTITUTION NAME,INSTITUTION TYPE,PERSON NAME&SURNAME,PERSON TITLE,PERSON POSITON";
                     writer.write(firstLine);
-                    writer.write("\n"+secondLine);
-                    writer.write("\n"+thirdLine);
-
-                    List<String> cellsList = new ArrayList<String>();
-
+                    writer.write("\n" + secondLine);
+                    writer.write("\n" + thirdLine);
+                    outerLoop:
                     for (File file : files) {
                         if (file.getName().endsWith(".xlsx")) {
                             path = file.getPath();
-                            String fileName =file.getName().substring(0,file.getName().length()-5);
+                            String fileName = file.getName().substring(0, file.getName().length() - 5);
+
+                           if (fileName.contains(",")) {
+                                for (int fn = 0; fn <= fileName.length(); fn++) {
+                                    fileName = fileName.replace(",", "_");
+                                }
+                            }
 
                             System.out.println("----------------COLLECTOR STARTING A NEW FİLE----------------");
 
@@ -72,108 +68,93 @@ public class CollectorFrame extends JFrame {
 
                             try {
                                 FileInputStream inputStream = new FileInputStream(path);
-
                                 XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-
                                 XSSFSheet sheet = workbook.getSheet("Chart");
-
                                 XSSFCell cell;
-
-
-
-                                String cellValue="";
+                                XSSFCell cellCheck;
                                 kacDosyaOkudum++;
 
-                                for(int i=3;i<=sheet.getLastRowNum();i++){
-                                    String value="";
-                                    System.out.println("\n");
-                                    for(int j = 0;j<=sheet.getRow(i).getLastCellNum();j++){
+                               rowLoop: for (int i = 3; i <= sheet.getLastRowNum(); i++) {
+                                    String value = "";
+                                    for (int j = 0; j <= 14; j++) {
 
                                         //CELL TANIMLANDI,J KAÇ İSE O HÜCREDEYİZ
                                         cell = sheet.getRow(i).getCell(j);
+                                        if (cell != null) {
+                                            if (cell.getCellType() != CellType.BLANK) {
+                                                if (j == 1) {
+                                                    if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                                                        Date date = cell.getDateCellValue();
+                                                        DateFormat timeFormat = new SimpleDateFormat("dd/MM/yy");
+                                                        String timeString = timeFormat.format(date);
+                                                        value += timeString + ",";
 
-                                        if(sheet.getRow(i)==null){
-                                            System.out.println("BREAK ÇALIŞTI");
-                                            break;
-                                        }
-
-                                        else if(cell==null){
-                                            /*cell = sheet.getRow(i).getCell(j,Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                                            cellValue="";*/
-                                            value+=" ";
-                                        }
-
-                                        else{
-                                            if(j==1){
-                                                if(cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)){
-                                                    Date date= cell.getDateCellValue();
-                                                    DateFormat timeFormat = new SimpleDateFormat("dd/MM/yy");
-                                                    String timeString = timeFormat.format(date);
-                                                    value+=timeString+",";
-
-                                                }else{
-                                                   value+=cell+",";
-                                                }
-                                            }
-                                            else if(j==2){
-                                                System.out.println("CELL TYPE : "+cell.getCellType());
-                                                //EN SON BURADA KALDIM GELENİN SAAT OLUP OLMADIĞINI KONTROL ETMEM LAZIM
-                                                if(cell.getCellType()==CellType.STRING){
-                                                    value+=cell.getStringCellValue()+",";
-                                                    continue;
-                                                }
-                                                else if (cell.getCellType()==CellType.NUMERIC) {
-                                                    String timeString = cell.getLocalDateTimeCellValue().toString();
-                                                    String[] times = timeString.split("T");
-                                                    String startTimeString = times[0];
-                                                    String endTimeString = times[1];
-                                                    value+=endTimeString+",";
-                                                    continue;
-                                                }
-                                                else{
-                                                    if(cell.getCellType()==CellType.BLANK){
-                                                        value+=" ";
-                                                        continue;
+                                                    } else {
+                                                        value += cell + ",";
                                                     }
+                                                } else if (j == 2) {
+                                                    //System.out.println("CELL TYPE : "+cell.getCellType());
+                                                    if (cell.getCellType() == CellType.STRING) {
+                                                        value += cell.getStringCellValue() + ",";
+                                                        continue;
+                                                    } else if (cell.getCellType() == CellType.NUMERIC) {
+                                                        String timeString = cell.getLocalDateTimeCellValue().toString();
+                                                        String[] times = timeString.split("T");
+                                                        String startTimeString = times[0];
+                                                        String endTimeString = times[1];
+                                                        value += endTimeString + ",";
+                                                        continue;
+                                                    } else {
+                                                        if (cell.getCellType() == CellType.BLANK) {
+                                                            value += ",";
+                                                            continue;
+                                                        }
+                                                    }
+                                                } else {
+                                                    value += getCellValue(cell) + ",";
                                                 }
+
                                             }
                                             else {
-                                                value+=cell.toString()+",";
+                                                value+=",";
+
+
                                             }
 
+                                        }
+                                        //ard arda 4 cell boşmu
+                                        else{
+                                            boolean allCellsEmpty = true;
+                                            for (Cell cell1 : sheet.getRow(i)) {
+                                                if (cell1 != null && cell1.getCellType() != CellType.BLANK) {
+                                                    allCellsEmpty = false;
+                                                    break;
+                                                }
+                                            }
+                                            if (allCellsEmpty) {
+                                                continue outerLoop;
+                                            } else {
+                                                value+=",";
 
+                                            }
                                         }
 
-                                        if(sheet.getRow(i).getCell(0)==null&&sheet.getRow(i).getCell(1)==null&&sheet.getRow(i).getCell(2)==null&&sheet.getRow(i).getCell(3)==null&&
-                                                sheet.getRow(i).getCell(4)==null&&sheet.getRow(i).getCell(5)==null&&sheet.getRow(i).getCell(6)==null&&sheet.getRow(i).getCell(7)==null&&
-                                                sheet.getRow(i).getCell(8)==null&&sheet.getRow(i).getCell(9)==null&&sheet.getRow(i).getCell(10)==null&&sheet.getRow(i).getCell(11)==null&&
-                                                sheet.getRow(i).getCell(12)==null&&sheet.getRow(i).getCell(13)==null&&sheet.getRow(i).getCell(14)==null&&sheet.getRow(i).getCell(15)==null){
-                                            workbook.close();
-                                            inputStream.close();
-                                            break;
-                                        }
 
                                     }
-                                    System.out.println("\n "+i+" "+value);
-
-
-
-
-
-
+                                    System.out.println("\n " + fileName + "," + value + ",");
+                                    writer.write("\n " + fileName + "," + value + ",");
                                 }
 
                             } catch (Exception exception) {
-                                System.out.println("HATA MESAJI(SATIR 147) : "+exception.getMessage());
                                 exception.printStackTrace();
                             }
 
                         }
 
                     }
-                    System.out.println(kacDosyaOkudum+" ADET DOSYA OKUNDU !");
+                    System.out.println(kacDosyaOkudum + " ADET DOSYA OKUNDU !");
                     writer.close();
-                }catch (IOException exception){
+                } catch (IOException exception) {
                     exception.printStackTrace();
                 }
 
@@ -187,22 +168,16 @@ public class CollectorFrame extends JFrame {
         jFrame.add(jPanel);
 
         jFrame.setResizable(false);
-        jFrame.setVisible(true );
+        jFrame.setVisible(true);
 
 
     }
 
 
+    public String getCellValue(XSSFCell cell) {
 
 
-
-
-
-
-    public String getCellValue(XSSFCell cell){
-
-
-        switch (cell.getCellType()){
+        switch (cell.getCellType()) {
 
             case NUMERIC:
                 return String.valueOf(cell.getNumericCellValue());

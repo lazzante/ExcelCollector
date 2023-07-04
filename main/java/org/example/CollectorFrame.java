@@ -1,6 +1,7 @@
 package org.example;
 
 import org.apache.commons.codec.binary.StringUtils;
+import org.apache.poi.common.usermodel.fonts.FontCharset;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.*;
 
@@ -8,6 +9,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -43,7 +45,7 @@ public class CollectorFrame extends JFrame {
                 int kacDosyaOkudum = 0;
 
                 try {
-                    BufferedWriter writer = new BufferedWriter(new FileWriter("CollectorsOutput.csv"));
+                    BufferedWriter writer = new BufferedWriter(new FileWriter("CollectorsOutput.csv", StandardCharsets.UTF_8));
                     String firstLine = "CONTACT ANGLE" + "\n" + "LOG BOOK";
                     String secondLine = "ANALYSIS / PROCESS";
                     String thirdLine = "EQUIPMENT NAME,DIVISION,DATE,TIME,OPERATION,USER,PURPOSE OF OPERATION,PROJECT CODE,USAGE DURATION,USAGE MODE,INSTITUTION NAME,INSTITUTION TYPE,PERSON NAME&SURNAME,PERSON TITLE,PERSON POSITON";
@@ -68,7 +70,9 @@ public class CollectorFrame extends JFrame {
 
                             try {
                                 FileInputStream inputStream = new FileInputStream(path);
+
                                 XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
+
                                 XSSFSheet sheet = workbook.getSheet("Chart");
                                 XSSFCell cell;
                                 XSSFCell cellCheck;
@@ -82,6 +86,7 @@ public class CollectorFrame extends JFrame {
                                         cell = sheet.getRow(i).getCell(j);
                                         if (cell != null) {
                                             if (cell.getCellType() != CellType.BLANK) {
+
                                                 if (j == 1) {
                                                     if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
                                                         Date date = cell.getDateCellValue();
@@ -110,7 +115,15 @@ public class CollectorFrame extends JFrame {
                                                             continue;
                                                         }
                                                     }
-                                                } else {
+                                                }  else {
+                                                     if (cell.getCellType()==CellType.STRING) {
+                                                        if(cell.getStringCellValue().contains(",")){
+
+                                                          String replacedCell = cell.getStringCellValue().replace(",","-");
+                                                            cell.setCellValue(replacedCell);
+                                                        }
+
+                                                    }
                                                     value += getCellValue(cell) + ",";
                                                 }
 
